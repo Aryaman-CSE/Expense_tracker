@@ -1,4 +1,5 @@
 # Expense Tracker App (Flutter + Firebase)
+# Use the apk file to download the app on your mobile devices and enjoy.
 
 A modern **Expense Tracker** mobile application built using **Flutter** and **Firebase** that helps users track spending, manage expenses.
 
