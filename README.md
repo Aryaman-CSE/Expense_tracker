@@ -1,16 +1,40 @@
-# basecode
+# Expense Tracker App (Flutter + Firebase)
 
-A new Flutter project.
+A modern **Expense Tracker** mobile application built using **Flutter** and **Firebase** that helps users track spending, manage expenses.
 
-## Getting Started
+🔗 **GitHub Repo:** https://github.com/Aryaman-CSE/Expense_tracker
 
-This project is a starting point for a Flutter application.
+---
 
-A few resources to get you started if this is your first Flutter project:
+## ✨ Features
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+- 🔐 **Firebase Authentication**
+  - Email/Password Sign Up + Login
+- 💸 **Expense Management**
+  - Add, view, and manage expenses
+- 📊 **Statistics & Analysis**
+  - Visual representation of spending
+- 👤 **Profile Section**
+  - User profile + account-related pages
+- ☁️ **Cloud Firestore Integration**
+  - Stores expenses securely in the cloud
+- 📱 **Clean Flutter UI**
+  - Responsive layout and smooth navigation
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+---
+
+## 🛠 Tech Stack
+
+- **Flutter (Dart)**
+- **Firebase Authentication**
+- **Cloud Firestore**
+- **Android (Gradle + Kotlin)**
+
+---
+
+## 📦 APK (Release Build)
+
+The release APK is generated using:
+
+```bash
+flutter build apk --release
