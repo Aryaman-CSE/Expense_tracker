@@ -3,11 +3,12 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io'; // To use File
 import 'package:provider/provider.dart';
 import 'image_provider.dart';
-import 'package:basecode/Profile_Pages/Account.dart';
-import 'package:basecode/Profile_Pages/Data.dart';
-import 'package:basecode/Profile_Pages/Friends.dart';
-import 'package:basecode/Profile_Pages/Message.dart';
-import 'package:basecode/Profile_Pages/security.dart';
+import 'Profile_Pages/Account.dart';
+import 'Profile_Pages/Data.dart';
+import 'Profile_Pages/Friends.dart';
+import 'Profile_Pages/Message.dart';
+import 'Profile_Pages/security.dart';
+
 
 class Profile extends StatefulWidget {
   const Profile({super.key, required this.userId});
