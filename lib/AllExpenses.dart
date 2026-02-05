@@ -3,19 +3,16 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class AllExpenses extends StatelessWidget {
-  final String userId; // Add userId
+  final String userId;
 
-  const AllExpenses({super.key, required this.userId}); // Initialize userId
+  const AllExpenses({super.key, required this.userId});
 
   void _deleteExpense(BuildContext context, DocumentSnapshot document) async {
-    Map<String, dynamic>? data = document.data() as Map<String, dynamic>?;
-    if (data != null && data['amount'] != null) {
-      await FirestoreService(userId).deleteExpense(document.id); // Pass userId to FirestoreService
+    await FirestoreService(userId).deleteExpense(document.id);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Expense deleted successfully')),
-      );
-    }
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Expense deleted successfully')),
+    );
   }
 
   @override
@@ -23,58 +20,129 @@ class AllExpenses extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'All Expenses',
-          style: TextStyle(fontWeight: FontWeight.w700),
+          "All Expenses",
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
         backgroundColor: const Color.fromRGBO(42, 124, 118, 1),
+        foregroundColor: Colors.white,
       ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirestoreService(userId).getAllExpensesStream(), // Pass userId to FirestoreService
+        stream: FirestoreService(userId).getAllExpensesStream(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('No expenses added'));
-          } else {
-            List<DocumentSnapshot> expenseList = snapshot.data!.docs;
-
-            return ListView.builder(
-              itemCount: expenseList.length,
-              itemBuilder: (context, index) {
-                DocumentSnapshot document = expenseList[index];
-                Map<String, dynamic>? data = document.data() as Map<String, dynamic>?;
-
-                if (data == null) {
-                  return const ListTile(
-                    title: Text('No data'),
-                  );
-                }
-
-                String? expenseName = data['name'] as String?;
-                double? expenseAmount = data['amount']?.toDouble();
-
-                if (expenseName == null || expenseAmount == null) {
-                  return const ListTile(
-                    title: Text('Invalid data'),
-                  );
-                }
-
-                return ListTile(
-                  title: Text(expenseName),
-                  subtitle: Text('Amount: \$${expenseAmount.toStringAsFixed(2)}'),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      _deleteExpense(context, document);
-                    },
-                  ),
-                );
-              },
-            );
+            return Center(child: Text("Error: ${snapshot.error}"));
           }
+
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final expenseList = snapshot.data!.docs;
+
+          if (expenseList.isEmpty) {
+            return const Center(child: Text("No expenses added"));
+          }
+
+          return ListView.separated(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+            itemCount: expenseList.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            itemBuilder: (context, index) {
+              final document = expenseList[index];
+              final data = document.data() as Map<String, dynamic>?;
+
+              if (data == null) return const SizedBox.shrink();
+
+              final name = (data['name'] ?? "").toString();
+              final amount = (data['amount'] ?? 0).toDouble();
+
+              return _ExpenseTile(
+                name: name.isEmpty ? "Unnamed Expense" : name,
+                amount: amount,
+                onDelete: () => _deleteExpense(context, document),
+              );
+            },
+          );
         },
+      ),
+    );
+  }
+}
+
+class _ExpenseTile extends StatelessWidget {
+  final String name;
+  final double amount;
+  final VoidCallback onDelete;
+
+  const _ExpenseTile({
+    required this.name,
+    required this.amount,
+    required this.onDelete,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.black.withOpacity(0.06)),
+        boxShadow: [
+          BoxShadow(
+            blurRadius: 10,
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.06),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            height: 44,
+            width: 44,
+            decoration: BoxDecoration(
+              color: const Color.fromRGBO(66, 150, 144, 1).withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.receipt_long_rounded,
+              color: Color.fromRGBO(66, 150, 144, 1),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Amount: \$${amount.toStringAsFixed(2)}",
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.black.withOpacity(0.6),
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onDelete,
+            icon: const Icon(Icons.delete_rounded),
+            color: Colors.red,
+          ),
+        ],
       ),
     );
   }
