@@ -1,14 +1,17 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io'; // To use File
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+
 import 'image_provider.dart';
+import 'utils/invite_link.dart';
+
 import 'Profile_Pages/Account.dart';
 import 'Profile_Pages/Data.dart';
 import 'Profile_Pages/Friends.dart';
 import 'Profile_Pages/Message.dart';
 import 'Profile_Pages/security.dart';
-
 
 class Profile extends StatefulWidget {
   const Profile({super.key, required this.userId});
@@ -24,284 +27,251 @@ class _ProfileState extends State<Profile> {
 
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile != null) {
-      Provider.of<ImageProviderModel>(context, listen: false)
-          .setImageFile(File(pickedFile.path));
-    }
+    if (pickedFile == null) return;
+
+    Provider.of<ImageProviderModel>(context, listen: false)
+        .setImageFile(File(pickedFile.path));
+  }
+
+  Future<void> _inviteFriends() async {
+    final link = generateInviteLink(widget.userId);
+
+    await Share.share(
+      "Join me on Expense Tracker!\n$link",
+      subject: "Expense Tracker Invite",
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final imageProvider = Provider.of<ImageProviderModel>(context);
+
     return Scaffold(
-      body: Stack(
-        children: [
-          CustomPaint(
-            size: Size(MediaQuery.of(context).size.width,
-                MediaQuery.of(context).size.height),
-            painter: CurvedRectanglePainter(),
-          ),
-          Positioned(
-            top: 100,
-            left: 10,
-            child: FloatingActionButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              backgroundColor: const Color.fromRGBO(66, 150, 144, 1),
-              foregroundColor: Colors.white,
-              elevation: 1000,
-              child: const Icon(Icons.arrow_back_ios),
-            ),
-          ),
-          const Positioned(
-            top: 112,
-            left: 185,
-            child: Text(
-              'Profile',
-              style: TextStyle(
-                  fontSize: 22,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700),
-            ),
-          ),
-          Positioned(
-            top: 250,
-            left: 170,
-            child: GestureDetector(
-              onTap: _pickImage,
-              child: Container(
-                height: 100,
-                width: 100,
-                decoration: const BoxDecoration(
-                    borderRadius: BorderRadius.all(Radius.circular(90)),
-                    color: Colors.red),
-                child: ClipOval(
-                  child: imageProvider.imageFile != null
-                      ? Image.file(
-                          imageProvider.imageFile!,
-                          fit: BoxFit.cover,
-                        )
-                      : const Icon(
-                          Icons.camera_alt,
-                          size: 50,
-                          color: Colors.white,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 10),
+
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color.fromRGBO(66, 150, 144, 1),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Row(
+                  children: [
+                    GestureDetector(
+                      onTap: _pickImage,
+                      child: Container(
+                        height: 72,
+                        width: 72,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(18),
                         ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: imageProvider.imageFile != null
+                              ? Image.file(
+                                  imageProvider.imageFile!,
+                                  fit: BoxFit.cover,
+                                )
+                              : const Icon(
+                                  Icons.camera_alt_rounded,
+                                  color: Colors.white,
+                                  size: 32,
+                                ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "Profile",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            "Manage your account & settings",
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white70,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          ),
-          Column(
-            children: <Widget>[
-              const SizedBox(
-                height: 450,
-              ),
-              Row(
-                children: <Widget>[
-                  const SizedBox(
-                    width: 30,
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const Friend(),
-                          ));
-                    },
-                    icon: const Icon(Icons.diamond),
-                    color: Colors.green,
-                    iconSize: 34,
-                  ),
-                  const SizedBox(
-                    width: 40,
-                  ),
-                  TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const Friend(),
-                            ));
-                      },
-                      child: const Text(
-                        'Invite Friends',
-                        style: TextStyle(color: Colors.black, fontSize: 18),
-                      )),
-                ],
-              ),
-              const Divider(
-                color: Colors.grey,
-                thickness: 0.4,
-              ),
-              const SizedBox(
-                height: 10,
-              ),
-              Row(
-                children: <Widget>[
-                  const SizedBox(
-                    width: 27,
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const Account(),
-                          ));
-                    },
-                    icon: const Icon(Icons.man_3),
-                    iconSize: 40,
-                  ),
-                  const SizedBox(
-                    width: 40,
-                  ),
-                  TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const Account(),
-                            ));
-                      },
-                      child: const Text(
-                        'Account Info',
-                        style: TextStyle(color: Colors.black, fontSize: 18),
-                      )),
-                ],
+
+              const SizedBox(height: 18),
+
+              // Invite Friends (WORKING)
+              _ProfileTile(
+                icon: Icons.group_add_rounded,
+                iconColor: const Color.fromRGBO(66, 150, 144, 1),
+                title: "Invite Friends",
+                subtitle: "Share the app link",
+                onTap: _inviteFriends,
               ),
 
-              const SizedBox(height: 15,),
-              Row(
-                children: <Widget>[
-                  const SizedBox(
-                    width: 27,
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const Message(),
-                          ));
-                    },
-                    icon: const Icon(Icons.message_sharp),
-                    iconSize: 40,
-                  ),
-                  const SizedBox(
-                    width: 40,
-                  ),
-                  TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const Message(),
-                            ));
-                      },
-                      child: const Text(
-                        'Message Centre',
-                        style: TextStyle(color: Colors.black, fontSize: 18),
-                      )),
-                ],
+              const SizedBox(height: 10),
+
+              _ProfileTile(
+                icon: Icons.person_rounded,
+                title: "Account Info",
+                subtitle: "View and edit your details",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const Account()),
+                  );
+                },
               ),
-              const SizedBox(height: 15,),
-              Row(
-                children: <Widget>[
-                  const SizedBox(
-                    width: 27,
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const Security(),
-                          ));
-                    },
-                    icon: const Icon(Icons.security),
-                    iconSize: 40,
-                  ),
-                  const SizedBox(
-                    width: 40,
-                  ),
-                  TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const Security(),
-                            ));
-                      },
-                      child: const Text(
-                        'Login and Security',
-                        style: TextStyle(color: Colors.black, fontSize: 18),
-                      )),
-                ],
+
+              const SizedBox(height: 10),
+
+              _ProfileTile(
+                icon: Icons.message_rounded,
+                title: "Message Centre",
+                subtitle: "Notifications and messages",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const Message()),
+                  );
+                },
               ),
-              SizedBox(height: 15,),
-              Row(
-                children: <Widget>[
-                  const SizedBox(
-                    width: 27,
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const Data(),
-                          ));
-                    },
-                    icon: const Icon(Icons.privacy_tip),
-                    iconSize: 40,
-                  ),
-                  const SizedBox(
-                    width: 40,
-                  ),
-                  TextButton(
-                      onPressed: () {
-                        Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const Data(),
-                            ));
-                      },
-                      child: const Text(
-                        'Data and Privacy',
-                        style: TextStyle(color: Colors.black, fontSize: 18),
-                      )),
-                ],
-              )
+
+              const SizedBox(height: 10),
+
+              _ProfileTile(
+                icon: Icons.security_rounded,
+                title: "Login and Security",
+                subtitle: "Password and account security",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const Security()),
+                  );
+                },
+              ),
+
+              const SizedBox(height: 10),
+
+              _ProfileTile(
+                icon: Icons.privacy_tip_rounded,
+                title: "Data and Privacy",
+                subtitle: "Privacy controls and policies",
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const Data()),
+                  );
+                },
+              ),
             ],
-          )
-        ],
+          ),
+        ),
       ),
     );
   }
 }
 
-class CurvedRectanglePainter extends CustomPainter {
+class _ProfileTile extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final Color? iconColor;
+
+  const _ProfileTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.iconColor,
+  });
+
   @override
-  void paint(Canvas canvas, Size size) {
-    Paint paint = Paint()
-      ..color = const Color.fromRGBO(66, 150, 144, 1)
-      ..style = PaintingStyle.fill;
-
-    Path path = Path();
-    double curveHeight =
-        size.height * 0.3; // Adjust this value to reduce the height
-
-    path.moveTo(0, 0);
-    path.lineTo(0, curveHeight);
-    path.quadraticBezierTo(size.width / 2, curveHeight + size.height * 0.1,
-        size.width, curveHeight);
-    path.lineTo(size.width, 0);
-    path.close();
-
-    canvas.drawPath(path, paint);
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Ink(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.black.withOpacity(0.06)),
+          boxShadow: [
+            BoxShadow(
+              blurRadius: 10,
+              spreadRadius: 0,
+              offset: const Offset(0, 4),
+              color: Colors.black.withOpacity(0.06),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              height: 46,
+              width: 46,
+              decoration: BoxDecoration(
+                color: (iconColor ?? const Color.fromRGBO(66, 150, 144, 1))
+                    .withOpacity(0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Icon(
+                icon,
+                color: iconColor ?? const Color.fromRGBO(66, 150, 144, 1),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black.withOpacity(0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.black.withOpacity(0.35),
+            ),
+          ],
+        ),
+      ),
+    );
   }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
