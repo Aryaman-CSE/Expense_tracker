@@ -3,7 +3,7 @@ import 'package:basecode/firestore.dart';
 
 class Expense extends StatefulWidget {
   final double currentBalance;
-  final String userId; // Add userId
+  final String userId;
 
   const Expense({super.key, required this.currentBalance, required this.userId});
 
@@ -14,179 +14,176 @@ class Expense extends StatefulWidget {
 class _ExpenseState extends State<Expense> {
   final TextEditingController _expenseNameController = TextEditingController();
   final TextEditingController _expenseAmountController = TextEditingController();
+
   late final FirestoreService _firestoreService;
 
   @override
   void initState() {
     super.initState();
-    _firestoreService = FirestoreService(widget.userId); // Initialize with userId
+    _firestoreService = FirestoreService(widget.userId);
+  }
+
+  @override
+  void dispose() {
+    _expenseNameController.dispose();
+    _expenseAmountController.dispose();
+    super.dispose();
+  }
+
+  void _submit() async {
+    final expenseName = _expenseNameController.text.trim();
+    final amountText = _expenseAmountController.text.trim();
+    final amount = double.tryParse(amountText);
+
+    if (expenseName.isEmpty || amount == null || amount <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Enter valid expense name and amount")),
+      );
+      return;
+    }
+
+    if (amount > widget.currentBalance) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Insufficient balance")),
+      );
+      return;
+    }
+
+    await _firestoreService.addExpense(expenseName, amount);
+
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Expense added successfully")),
+    );
+
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SingleChildScrollView(
-        child: Stack(
-          children: [
-            CustomPaint(
-              size: Size(MediaQuery.of(context).size.width,
-                  MediaQuery.of(context).size.height),
-              painter: CurvedRectanglePainter(),
-            ),
-            Column(
-              children: <Widget>[
-                const SizedBox(
-                  height: 100,
+      appBar: AppBar(
+        title: const Text(
+          "Add Expense",
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        backgroundColor: const Color.fromRGBO(66, 150, 144, 1),
+        foregroundColor: Colors.white,
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color.fromRGBO(42, 124, 118, 1),
+                  borderRadius: BorderRadius.circular(18),
                 ),
-                Row(
-                  children: <Widget>[
-                    const SizedBox(
-                      width: 10,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Available Balance",
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                    FloatingActionButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                      },
-                      elevation: 1000,
-                      backgroundColor: const Color.fromRGBO(66, 150, 144, 1),
-                      foregroundColor: Colors.white,
-                      child: const Icon(Icons.arrow_back_ios),
+                    const SizedBox(height: 6),
+                    Text(
+                      "\$${widget.currentBalance.toStringAsFixed(2)}",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
-                    const SizedBox(width: 85),
-                    const Text(
-                      'Add Expense',
-                      style: TextStyle(color: Colors.white, fontSize: 22),
-                    )
                   ],
-                )
-              ],
-            ),
-            Positioned(
-                top: 200,
-                bottom: 200,
-                left: 30,
-                right: 30,
-                child: Container(
-                    height: 300,
-                    width: 500,
-                    decoration: BoxDecoration(
-                      borderRadius: const BorderRadius.all(Radius.circular(40)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.white.withOpacity(1),
-                          spreadRadius: 2,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: Colors.black.withOpacity(0.06)),
+                  boxShadow: [
+                    BoxShadow(
+                      blurRadius: 12,
+                      spreadRadius: 0,
+                      offset: const Offset(0, 5),
+                      color: Colors.black.withOpacity(0.06),
                     ),
-                    child: Column(
-                      children: <Widget>[
-                        const SizedBox(
-                          height: 40,
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      "Expense Details",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _expenseNameController,
+                      textInputAction: TextInputAction.next,
+                      decoration: InputDecoration(
+                        labelText: "Expense Name",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        const Row(
-                          children: <Widget>[
-                            SizedBox(
-                              width: 40,
-                            ),
-                            Text(
-                              'Expense',
-                              style: TextStyle(
-                                  fontSize: 26, fontWeight: FontWeight.w900),
-                            ),
-                            SizedBox(
-                              width: 100,
-                            ),
-                          ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    TextField(
+                      controller: _expenseAmountController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      decoration: InputDecoration(
+                        labelText: "Amount",
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
                         ),
-                        const SizedBox(
-                          height: 10,
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(30),
-                          child: Column(
-                            children: <Widget>[
-                              TextField(
-                                controller: _expenseNameController,
-                                decoration: const InputDecoration(
-                                    labelText: 'Expense Name'),
-                              ),
-                              const SizedBox(
-                                height: 50,
-                              ),
-                              TextField(
-                                controller: _expenseAmountController,
-                                decoration: const InputDecoration(
-                                    labelText: 'Amount'),
-                                keyboardType: TextInputType.number,
-                              ),
-                              const SizedBox(
-                                height: 100,
-                              ),
-                              ElevatedButton(
-                                  onPressed: () {
-                                    String expenseName =
-                                        _expenseNameController.text;
-                                    double? amount = double.tryParse(
-                                        _expenseAmountController.text);
-                                    if (expenseName.isNotEmpty &&
-                                        amount != null) {
-                                      if (amount <= widget.currentBalance) {
-                                        _firestoreService.addExpense(
-                                            expenseName, amount);
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(const SnackBar(
-                                                content: Text(
-                                                    'Expense added successfully')));
-                                        _expenseNameController.clear();
-                                        _expenseAmountController.clear();
-                                        Navigator.pop(context);
-                                      } else {
-                                        ScaffoldMessenger.of(context)
-                                            .showSnackBar(const SnackBar(
-                                                content: Text(
-                                                    'Insufficient balance')));
-                                      }
-                                    } else {
-                                      ScaffoldMessenger.of(context)
-                                          .showSnackBar(const SnackBar(
-                                              content:
-                                                  Text('Enter valid data')));
-                                    }
-                                  },
-                                  child: const Text('Add Expense'))
-                            ],
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _submit,
+                        style: ElevatedButton.styleFrom(
+                          elevation: 0,
+                          backgroundColor:
+                              const Color.fromRGBO(66, 150, 144, 1),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                      ],
-                    )))
-          ],
+                        icon: const Icon(Icons.check_circle_outline_rounded),
+                        label: const Text(
+                          "Add Expense",
+                          style: TextStyle(fontWeight: FontWeight.w900),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
-}
-
-class CurvedRectanglePainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    Paint paint = Paint()
-      ..color = const Color.fromRGBO(66, 150, 144, 1)
-      ..style = PaintingStyle.fill;
-
-    Path path = Path();
-    double curveHeight = size.height * 0.3;
-
-    path.moveTo(0, 0);
-    path.lineTo(0, curveHeight);
-    path.quadraticBezierTo(size.width / 2, curveHeight + size.height * 0.1,
-        size.width, curveHeight);
-    path.lineTo(size.width, 0);
-    path.close();
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
