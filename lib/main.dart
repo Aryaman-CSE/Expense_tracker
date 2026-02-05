@@ -6,8 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:provider/provider.dart';
-import 'image_provider.dart'; // Import your ImageProviderModel
-import 'package:icons_flutter/icons_flutter.dart';
+import 'image_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +25,7 @@ class MyApp extends StatelessWidget {
       ],
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        title: 'Bottom Navigation Bar App',
+        title: 'Expense Tracker',
         theme: ThemeData(
           primarySwatch: Colors.blue,
         ),
@@ -37,23 +36,23 @@ class MyApp extends StatelessWidget {
 }
 
 class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.userId, required String username});
+  const MyHomePage({super.key, required this.userId, required this.username});
 
   final String userId;
+  final String username;
 
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  State<MyHomePage> createState() => _MyHomePageState();
 }
 
 class _MyHomePageState extends State<MyHomePage> {
   int _selectedIndex = 0;
 
-  // Updated widget options to use the userId passed to MyHomePage
-  static List<Widget> _widgetOptions(String userId) => <Widget>[
-    Home(userId: userId),
-    Compare(userId: userId),
-    Profile(userId: userId),
-  ];
+  List<Widget> _screens() => <Widget>[
+        Home(userId: widget.userId),
+        Compare(userId: widget.userId),
+        Profile(userId: widget.userId),
+      ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -64,10 +63,17 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Center(
-        child: _widgetOptions(widget.userId).elementAt(_selectedIndex),
+      body: SafeArea(
+        child: IndexedStack(
+          index: _selectedIndex,
+          children: _screens(),
+        ),
       ),
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _selectedIndex,
+        selectedItemColor: const Color.fromRGBO(66, 150, 144, 1),
+        onTap: _onItemTapped,
         items: const <BottomNavigationBarItem>[
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
@@ -82,10 +88,8 @@ class _MyHomePageState extends State<MyHomePage> {
             label: 'Profile',
           ),
         ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: const Color.fromRGBO(66, 150, 144, 1),
-        onTap: _onItemTapped,
       ),
     );
   }
 }
+
