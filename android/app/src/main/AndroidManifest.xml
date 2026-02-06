@@ -1,6 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
+<<<<<<< HEAD
         android:label="Expense Tracker"
+=======
+        android:label="Expense Tracker Pro"
+>>>>>>> 27e4ad2 (Update Android build config, app name, invite link, and logo)
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
