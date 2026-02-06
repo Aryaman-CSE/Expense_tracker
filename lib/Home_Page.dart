@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'firestore.dart';
 import 'Expense.dart';
 import 'AllExpenses.dart';
@@ -8,377 +9,314 @@ import 'Notification.dart';
 class Home extends StatefulWidget {
   final String userId;
 
-  const Home({super.key, required this.userId});
+  const Home({Key? key, required this.userId}) : super(key: key);
 
   @override
   State<Home> createState() => _HomeState();
 }
 
 class _HomeState extends State<Home> {
-  double _initialBalance = 110000.0;
+  double _initialBalance = 0.0;
+  double _balance = 0.0;
   double _totalExpenses = 0.0;
 
   FirestoreService get _firestoreService => FirestoreService(widget.userId);
 
-  double get _balance => _initialBalance - _totalExpenses;
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setInitialBalance();
+    });
+  }
+
+  Future<void> _setInitialBalance() async {
+    final controller = TextEditingController(
+      text: _initialBalance == 0 ? "" : _initialBalance.toStringAsFixed(0),
+    );
+
+    final result = await showDialog<double>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Set Balance"),
+        content: TextField(
+          controller: controller,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            hintText: "Enter balance (example: 50000)",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () {
+              final val = double.tryParse(controller.text.trim());
+              if (val == null || val < 0) return;
+              Navigator.pop(context, val);
+            },
+            child: const Text("Save"),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      setState(() {
+        _initialBalance = result;
+        _balance = _initialBalance - _totalExpenses;
+      });
+    }
+  }
 
   void _deleteExpense(DocumentSnapshot document) async {
     final data = document.data() as Map<String, dynamic>?;
-    if (data == null) return;
+    if (data != null && data['amount'] != null) {
+      final amount = data['amount']?.toDouble() ?? 0;
+      await _firestoreService.deleteExpense(document.id);
 
-    final amount = (data['amount'] ?? 0).toDouble();
-
-    await _firestoreService.deleteExpense(document.id);
-
-    setState(() {
-      _totalExpenses -= amount;
-      if (_totalExpenses < 0) _totalExpenses = 0;
-    });
+      setState(() {
+        _totalExpenses -= amount;
+        _balance = _initialBalance - _totalExpenses;
+      });
+    }
   }
 
   void _addExpense(BuildContext context) {
-    if (_balance <= 0) {
+    if (_balance > 0) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => Expense(
+            userId: widget.userId,
+            currentBalance: _balance,
+          ),
+        ),
+      );
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Insufficient balance to add new expense')),
       );
-      return;
     }
-
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => Expense(
-          userId: widget.userId,
-          currentBalance: _balance,
-        ),
-      ),
-    );
-  }
-
-  void _updateBalance() {
-    setState(() {
-      _initialBalance += 1000.0;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color.fromRGBO(42, 124, 118, 1),
-        foregroundColor: Colors.white,
-        onPressed: () => _addExpense(context),
-        child: const Icon(Icons.add_rounded),
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _TopHeader(
-              onNotificationTap: () {
+      body: Stack(
+        children: [
+          CustomPaint(
+            size: MediaQuery.of(context).size,
+            painter: CurvedRectanglePainter(),
+          ),
+
+          // Greeting
+          const Positioned(
+            top: 80,
+            left: 20,
+            child: Text(
+              'Hi There',
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 24),
+            ),
+          ),
+
+          // Notification button
+          Positioned(
+            top: 70,
+            right: 20,
+            child: FloatingActionButton(
+              foregroundColor: Colors.white,
+              backgroundColor: const Color.fromRGBO(42, 124, 118, 1),
+              onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const Notify()),
+                  MaterialPageRoute(builder: (context) => const Notify()),
                 );
               },
+              child: const Icon(Icons.notification_add),
             ),
-            const SizedBox(height: 14),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _firestoreService.getAllExpensesStream(),
-                builder: (context, snapshot) {
-                  if (snapshot.hasError) {
-                    return _InfoCard(
-                      title: "Error",
-                      subtitle: snapshot.error.toString(),
-                    );
-                  }
+          ),
 
-                  if (!snapshot.hasData) {
-                    return const _LoadingCard();
-                  }
-
-                  final expenseList = snapshot.data!.docs;
-
-                  double total = 0.0;
-                  for (final document in expenseList) {
-                    final data = document.data() as Map<String, dynamic>?;
-                    if (data == null) continue;
-                    total += (data['amount'] ?? 0).toDouble();
-                  }
-
-                  _totalExpenses = total;
-
-                  return _BalanceCard(
-                    balance: _balance,
-                    totalExpenses: _totalExpenses,
-                    onUpdateBalance: _updateBalance,
-                  );
-                },
+          // Balance card
+          Positioned(
+            top: 200,
+            left: 20,
+            right: 20,
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              decoration: const BoxDecoration(
+                borderRadius: BorderRadius.all(Radius.circular(30)),
+                color: Color.fromRGBO(42, 124, 118, 1),
               ),
-            ),
-            const SizedBox(height: 18),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  const Text(
-                    "Transaction History",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                  ),
-                  const Spacer(),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => AllExpenses(userId: widget.userId),
-                        ),
-                      );
-                    },
-                    child: const Text("See all"),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+              child: Center(
                 child: StreamBuilder<QuerySnapshot>(
-                  stream: _firestoreService.getLatestExpensesStream(),
+                  stream: _firestoreService.getAllExpensesStream(),
                   builder: (context, snapshot) {
-                    if (snapshot.hasError) {
-                      return Center(child: Text("Error: ${snapshot.error}"));
-                    }
+                    if (snapshot.hasData) {
+                      _totalExpenses = 0.0;
+                      final expenseList = snapshot.data!.docs;
 
-                    if (!snapshot.hasData) {
+                      for (final document in expenseList) {
+                        final data = document.data() as Map<String, dynamic>?;
+                        if (data != null && data['amount'] != null) {
+                          _totalExpenses += data['amount']?.toDouble() ?? 0;
+                        }
+                      }
+
+                      _balance = _initialBalance - _totalExpenses;
+
+                      return Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            'Balance: \$${_balance.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 20,
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Total Expenses: \$${_totalExpenses.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                        ],
+                      );
+                    } else if (snapshot.hasError) {
+                      return Center(child: Text('Error: ${snapshot.error}'));
+                    } else {
                       return const Center(child: CircularProgressIndicator());
                     }
-
-                    final expenseList = snapshot.data!.docs;
-
-                    if (expenseList.isEmpty) {
-                      return const Center(child: Text("No expenses added"));
-                    }
-
-                    return ListView.separated(
-                      itemCount: expenseList.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (context, index) {
-                        final document = expenseList[index];
-                        final data = document.data() as Map<String, dynamic>?;
-
-                        if (data == null) return const SizedBox.shrink();
-
-                        final name = (data['name'] ?? "").toString();
-                        final amount = (data['amount'] ?? 0).toDouble();
-
-                        return _ExpenseTile(
-                          name: name.isEmpty ? "Unnamed Expense" : name,
-                          amount: amount,
-                          onDelete: () => _deleteExpense(document),
-                        );
-                      },
-                    );
                   },
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TopHeader extends StatelessWidget {
-  final VoidCallback onNotificationTap;
-
-  const _TopHeader({required this.onNotificationTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(16, 18, 16, 18),
-      decoration: const BoxDecoration(
-        color: Color.fromRGBO(66, 150, 144, 1),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(26),
-          bottomRight: Radius.circular(26),
-        ),
-      ),
-      child: Row(
-        children: [
-          const Expanded(
-            child: Text(
-              "Hi There 👋",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w800,
-                color: Colors.white,
-              ),
-            ),
           ),
-          IconButton(
-            onPressed: onNotificationTap,
-            icon: const Icon(Icons.notifications_active_rounded),
-            color: Colors.white,
-          ),
-        ],
-      ),
-    );
-  }
-}
 
-class _BalanceCard extends StatelessWidget {
-  final double balance;
-  final double totalExpenses;
-  final VoidCallback onUpdateBalance;
-
-  const _BalanceCard({
-    required this.balance,
-    required this.totalExpenses,
-    required this.onUpdateBalance,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color.fromRGBO(42, 124, 118, 1),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            "Balance",
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.85),
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            "\$${balance.toStringAsFixed(2)}",
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 26,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            "Total Expenses: \$${totalExpenses.toStringAsFixed(2)}",
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.9),
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: onUpdateBalance,
+          // Update balance button
+          Positioned(
+            top: 360,
+            right: 30,
+            child: ElevatedButton(
               style: ElevatedButton.styleFrom(
-                elevation: 0,
-                backgroundColor: Colors.white,
-                foregroundColor: const Color.fromRGBO(42, 124, 118, 1),
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                backgroundColor: const Color.fromRGBO(42, 124, 118, 1),
+                elevation: 10,
               ),
-              icon: const Icon(Icons.add_circle_outline_rounded),
-              label: const Text(
-                "Update Balance (+1000)",
-                style: TextStyle(fontWeight: FontWeight.w800),
+              onPressed: _setInitialBalance,
+              child: const Text(
+                'Update Balance',
+                style: TextStyle(color: Colors.white),
               ),
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
 
-class _ExpenseTile extends StatelessWidget {
-  final String name;
-  final double amount;
-  final VoidCallback onDelete;
-
-  const _ExpenseTile({
-    required this.name,
-    required this.amount,
-    required this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black.withOpacity(0.06)),
-        boxShadow: [
-          BoxShadow(
-            blurRadius: 10,
-            spreadRadius: 0,
-            offset: const Offset(0, 4),
-            color: Colors.black.withOpacity(0.06),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            height: 44,
-            width: 44,
-            decoration: BoxDecoration(
-              color: const Color.fromRGBO(66, 150, 144, 1).withOpacity(0.12),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.receipt_long_rounded,
-              color: Color.fromRGBO(66, 150, 144, 1),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          // Transaction header
+          Positioned(
+            top: 440,
+            left: 20,
+            right: 20,
+            child: Row(
               children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 15,
-                  ),
+                const Text(
+                  'Transaction History',
+                  style: TextStyle(fontWeight: FontWeight.w900, fontSize: 24),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  "Amount: \$${amount.toStringAsFixed(2)}",
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black.withOpacity(0.6),
-                    fontSize: 13,
+                const Spacer(),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AllExpenses(userId: widget.userId),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'See all',
+                    style: TextStyle(fontWeight: FontWeight.w700),
                   ),
                 ),
               ],
             ),
           ),
-          IconButton(
-            onPressed: onDelete,
-            icon: const Icon(Icons.delete_rounded),
-            color: Colors.red,
+
+          // Latest transactions
+          Positioned(
+            top: 490,
+            left: 10,
+            right: 10,
+            bottom: 90,
+            child: StreamBuilder<QuerySnapshot>(
+              stream: _firestoreService.getLatestExpensesStream(),
+              builder: (context, snapshot) {
+                if (snapshot.hasData) {
+                  final expenseList = snapshot.data!.docs;
+
+                  if (expenseList.isEmpty) {
+                    return const Center(child: Text('No expenses added'));
+                  }
+
+                  return ListView.builder(
+                    itemCount: expenseList.length,
+                    itemBuilder: (context, index) {
+                      final document = expenseList[index];
+                      final data = document.data() as Map<String, dynamic>?;
+
+                      if (data == null) {
+                        return const ListTile(title: Text('No data'));
+                      }
+
+                      final expenseName = data['name'] as String?;
+                      final expenseAmount = data['amount']?.toDouble();
+
+                      if (expenseName == null || expenseAmount == null) {
+                        return const ListTile(title: Text('Invalid data'));
+                      }
+
+                      return Card(
+                        elevation: 2,
+                        child: ListTile(
+                          title: Text(expenseName),
+                          subtitle: Text(
+                            'Amount: \$${expenseAmount.toStringAsFixed(2)}',
+                          ),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete, color: Colors.red),
+                            onPressed: () => _deleteExpense(document),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                } else {
+                  return const Center(child: CircularProgressIndicator());
+                }
+              },
+            ),
+          ),
+
+          // Add expense button
+          Positioned(
+            bottom: 10,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: IconButton(
+                onPressed: () => _addExpense(context),
+                icon: const Icon(Icons.add_circle_rounded),
+                color: const Color.fromRGBO(42, 124, 118, 1),
+                iconSize: 70,
+              ),
+            ),
           ),
         ],
       ),
@@ -386,51 +324,30 @@ class _ExpenseTile extends StatelessWidget {
   }
 }
 
-class _LoadingCard extends StatelessWidget {
-  const _LoadingCard();
+class CurvedRectanglePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    Paint paint = Paint()
+      ..color = const Color.fromRGBO(66, 150, 144, 1)
+      ..style = PaintingStyle.fill;
+
+    Path path = Path();
+    double curveHeight = size.height * 0.3;
+
+    path.moveTo(0, 0);
+    path.lineTo(0, curveHeight);
+    path.quadraticBezierTo(
+      size.width / 2,
+      curveHeight + size.height * 0.1,
+      size.width,
+      curveHeight,
+    );
+    path.lineTo(size.width, 0);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color.fromRGBO(42, 124, 118, 1),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: const Center(
-        child: CircularProgressIndicator(color: Colors.white),
-      ),
-    );
-  }
-}
-
-class _InfoCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-
-  const _InfoCard({required this.title, required this.subtitle});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.06),
-        borderRadius: BorderRadius.circular(18),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
-          ),
-          const SizedBox(height: 6),
-          Text(subtitle),
-        ],
-      ),
-    );
-  }
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }

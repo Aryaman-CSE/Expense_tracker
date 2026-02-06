@@ -1,15 +1,14 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import 'image_provider.dart';
-import 'utils/invite_link.dart';
 
 import 'Profile_Pages/Account.dart';
 import 'Profile_Pages/Data.dart';
-import 'Profile_Pages/Friends.dart';
 import 'Profile_Pages/Message.dart';
 import 'Profile_Pages/security.dart';
 
@@ -27,18 +26,16 @@ class _ProfileState extends State<Profile> {
 
   Future<void> _pickImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile == null) return;
-
-    Provider.of<ImageProviderModel>(context, listen: false)
-        .setImageFile(File(pickedFile.path));
+    if (pickedFile != null) {
+      Provider.of<ImageProviderModel>(context, listen: false)
+          .setImageFile(File(pickedFile.path));
+    }
   }
 
   Future<void> _inviteFriends() async {
-    final link = generateInviteLink(widget.userId);
-
     await Share.share(
-      "Join me on Expense Tracker!\n$link",
-      subject: "Expense Tracker Invite",
+      "Expense Tracker Pro\n\nDownload: https://github.com/Aryaman-CSE/Expense_tracker",
+      subject: "Expense Tracker Pro",
     );
   }
 
@@ -47,231 +44,223 @@ class _ProfileState extends State<Profile> {
     final imageProvider = Provider.of<ImageProviderModel>(context);
 
     return Scaffold(
+      backgroundColor: Colors.white,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 10),
+        child: Stack(
+          children: [
+            CustomPaint(
+              size: Size(
+                MediaQuery.of(context).size.width,
+                MediaQuery.of(context).size.height,
+              ),
+              painter: CurvedRectanglePainter(),
+            ),
 
-              // Header
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color.fromRGBO(66, 150, 144, 1),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: Row(
-                  children: [
-                    GestureDetector(
-                      onTap: _pickImage,
-                      child: Container(
-                        height: 72,
-                        width: 72,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
-                          borderRadius: BorderRadius.circular(18),
+            // Main content scrollable
+            SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 40),
+              child: Column(
+                children: [
+                  const SizedBox(height: 18),
+
+                  // Top bar
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    child: Row(
+                      children: [
+                        FloatingActionButton(
+                          mini: true,
+                          onPressed: () => Navigator.pop(context),
+                          backgroundColor:
+                              const Color.fromRGBO(66, 150, 144, 1),
+                          foregroundColor: Colors.white,
+                          elevation: 6,
+                          child: const Icon(Icons.arrow_back_ios_new),
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: imageProvider.imageFile != null
-                              ? Image.file(
-                                  imageProvider.imageFile!,
-                                  fit: BoxFit.cover,
-                                )
-                              : const Icon(
-                                  Icons.camera_alt_rounded,
-                                  color: Colors.white,
-                                  size: 32,
-                                ),
+                        const Spacer(),
+                        const Text(
+                          "Profile",
+                          style: TextStyle(
+                            fontSize: 22,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
+                        const Spacer(),
+                        const SizedBox(width: 44),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  // Profile image
+                  GestureDetector(
+                    onTap: _pickImage,
+                    child: Container(
+                      height: 110,
+                      width: 110,
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.black12,
+                      ),
+                      child: ClipOval(
+                        child: imageProvider.imageFile != null
+                            ? Image.file(
+                                imageProvider.imageFile!,
+                                fit: BoxFit.cover,
+                              )
+                            : const Icon(
+                                Icons.camera_alt,
+                                size: 48,
+                                color: Colors.white,
+                              ),
                       ),
                     ),
-                    const SizedBox(width: 14),
-                    const Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Profile",
-                            style: TextStyle(
-                              fontSize: 20,
-                              fontWeight: FontWeight.w900,
-                              color: Colors.white,
-                            ),
+                  ),
+
+                  const SizedBox(height: 25),
+
+                  // Card for options
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.08),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
                           ),
-                          SizedBox(height: 4),
-                          Text(
-                            "Manage your account & settings",
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.white70,
-                            ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          _profileTile(
+                            icon: Icons.person_add_alt_1,
+                            iconColor: Colors.green,
+                            title: "Invite Friends",
+                            onTap: _inviteFriends,
+                          ),
+                          _divider(),
+                          _profileTile(
+                            icon: Icons.account_circle_outlined,
+                            iconColor: Colors.black,
+                            title: "Account Info",
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const Account(),
+                                ),
+                              );
+                            },
+                          ),
+                          _divider(),
+                          _profileTile(
+                            icon: Icons.message_outlined,
+                            iconColor: Colors.black,
+                            title: "Message Centre",
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const Message(),
+                                ),
+                              );
+                            },
+                          ),
+                          _divider(),
+                          _profileTile(
+                            icon: Icons.security_outlined,
+                            iconColor: Colors.black,
+                            title: "Login and Security",
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const Security(),
+                                ),
+                              );
+                            },
+                          ),
+                          _divider(),
+                          _profileTile(
+                            icon: Icons.privacy_tip_outlined,
+                            iconColor: Colors.black,
+                            title: "Data and Privacy",
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const Data(),
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),
                     ),
-                  ],
-                ),
+                  ),
+
+                  const SizedBox(height: 25),
+                ],
               ),
-
-              const SizedBox(height: 18),
-
-              // Invite Friends (WORKING)
-              _ProfileTile(
-                icon: Icons.group_add_rounded,
-                iconColor: const Color.fromRGBO(66, 150, 144, 1),
-                title: "Invite Friends",
-                subtitle: "Share the app link",
-                onTap: _inviteFriends,
-              ),
-
-              const SizedBox(height: 10),
-
-              _ProfileTile(
-                icon: Icons.person_rounded,
-                title: "Account Info",
-                subtitle: "View and edit your details",
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const Account()),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 10),
-
-              _ProfileTile(
-                icon: Icons.message_rounded,
-                title: "Message Centre",
-                subtitle: "Notifications and messages",
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const Message()),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 10),
-
-              _ProfileTile(
-                icon: Icons.security_rounded,
-                title: "Login and Security",
-                subtitle: "Password and account security",
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const Security()),
-                  );
-                },
-              ),
-
-              const SizedBox(height: 10),
-
-              _ProfileTile(
-                icon: Icons.privacy_tip_rounded,
-                title: "Data and Privacy",
-                subtitle: "Privacy controls and policies",
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const Data()),
-                  );
-                },
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _divider() {
+    return const Divider(height: 1, thickness: 0.6, color: Colors.black12);
+  }
+
+  Widget _profileTile({
+    required IconData icon,
+    required Color iconColor,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      onTap: onTap,
+      leading: Icon(icon, color: iconColor, size: 28),
+      title: Text(
+        title,
+        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+      ),
+      trailing: const Icon(Icons.arrow_forward_ios, size: 16),
     );
   }
 }
 
-class _ProfileTile extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-  final Color? iconColor;
+class CurvedRectanglePainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    Paint paint = Paint()
+      ..color = const Color.fromRGBO(66, 150, 144, 1)
+      ..style = PaintingStyle.fill;
 
-  const _ProfileTile({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-    this.iconColor,
-  });
+    Path path = Path();
+    double curveHeight = size.height * 0.3;
+
+    path.moveTo(0, 0);
+    path.lineTo(0, curveHeight);
+    path.quadraticBezierTo(
+      size.width / 2,
+      curveHeight + size.height * 0.1,
+      size.width,
+      curveHeight,
+    );
+    path.lineTo(size.width, 0);
+    path.close();
+
+    canvas.drawPath(path, paint);
+  }
 
   @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Ink(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.black.withOpacity(0.06)),
-          boxShadow: [
-            BoxShadow(
-              blurRadius: 10,
-              spreadRadius: 0,
-              offset: const Offset(0, 4),
-              color: Colors.black.withOpacity(0.06),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              height: 46,
-              width: 46,
-              decoration: BoxDecoration(
-                color: (iconColor ?? const Color.fromRGBO(66, 150, 144, 1))
-                    .withOpacity(0.12),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(
-                icon,
-                color: iconColor ?? const Color.fromRGBO(66, 150, 144, 1),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black.withOpacity(0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right_rounded,
-              color: Colors.black.withOpacity(0.35),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
